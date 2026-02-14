@@ -1,26 +1,38 @@
-index.html
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AI Motion Control</title>
+  <title>AI Hand Motion Control</title>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
   <style>
-    body { text-align: center; background: black; color: white; }
-    video { width: 100%; max-width: 500px; }
+    body {
+      margin: 0;
+      background: black;
+      text-align: center;
+      color: white;
+      font-family: Arial;
+    }
+    video, canvas {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    h1 {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
 
-<h2>AI Hand Motion Control</h2>
+<h1>AI Hand Motion Control</h1>
 
-<video class="input_video"></video>
+<video class="input_video" autoplay></video>
 <canvas class="output_canvas"></canvas>
 
 <script>
-const videoElement = document.getElementsByClassName('input_video')[0];
-const canvasElement = document.getElementsByClassName('output_canvas')[0];
+const videoElement = document.querySelector('.input_video');
+const canvasElement = document.querySelector('.output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
 const hands = new Hands({
@@ -36,15 +48,22 @@ hands.setOptions({
 });
 
 hands.onResults(results => {
+  canvasElement.width = videoElement.videoWidth;
+  canvasElement.height = videoElement.videoHeight;
+
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
   if (results.multiHandLandmarks) {
     for (const landmarks of results.multiHandLandmarks) {
-      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS);
-      drawLandmarks(canvasCtx, landmarks);
+      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+        {color: '#00FF00', lineWidth: 2});
+      drawLandmarks(canvasCtx, landmarks,
+        {color: '#FF0000', lineWidth: 1});
     }
   }
+
   canvasCtx.restore();
 });
 
@@ -52,5 +71,11 @@ const camera = new Camera(videoElement, {
   onFrame: async () => {
     await hands.send({image: videoElement});
   },
-  width: 500,
-  height:
+  width: 640,
+  height: 480
+});
+camera.start();
+</script>
+
+</body>
+</html>
