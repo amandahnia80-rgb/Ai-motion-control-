@@ -1,39 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AI Hand Motion Control</title>
+  <title>AI Hand Game</title>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
   <style>
     body {
       margin: 0;
+      overflow: hidden;
       background: black;
-      text-align: center;
       color: white;
-      font-family: Arial;
+      text-align: center;
     }
-    video, canvas {
+    canvas {
       position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 0;
+      left: 0;
     }
     h1 {
-      margin-top: 20px;
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      z-index: 2;
     }
   </style>
 </head>
 <body>
 
-<h1>AI Hand Motion Control</h1>
+<h1>🖐 AI Hand Dodge Game</h1>
 
-<video class="input_video" autoplay></video>
-<canvas class="output_canvas"></canvas>
+<video id="video" style="display:none;"></video>
+<canvas id="gameCanvas"></canvas>
 
 <script>
-const videoElement = document.querySelector('.input_video');
-const canvasElement = document.querySelector('.output_canvas');
-const canvasCtx = canvasElement.getContext('2d');
+const video = document.getElementById('video');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let player = { x: canvas.width/2, y: canvas.height - 50, size: 50 };
+let ball = { x: Math.random()*canvas.width, y: 0, size: 30, speed: 4 };
+let score = 0;
+
+function drawPlayer() {
+  ctx.fillStyle = "lime";
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+}
+
+function drawBall() {
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function resetBall() {
+  ball.y = 0;
+  ball.x = Math.random()*canvas.width;
+  ball.speed += 0.5;
+  score++;
+}
+
+function detectCollision() {
+  if (
+    ball.y + ball.size > player.y &&
+    ball.x > player.x &&
+    ball.x < player.x + player.size
+  ) {
+    alert("Game Over! Score: " + score);
+    location.reload();
+  }
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawPlayer();
+  drawBall();
+  
+  ball.y += ball.speed;
+  
+  if (ball.y > canvas.height) {
+    resetBall();
+  }
+
+  detectCollision();
+
+  ctx.fillStyle = "white";
+  ctx.fillText("Score: " + score, 20, 40);
+
+  requestAnimationFrame(gameLoop);
+}
 
 const hands = new Hands({
   locateFile: (file) => {
@@ -48,33 +107,22 @@ hands.setOptions({
 });
 
 hands.onResults(results => {
-  canvasElement.width = videoElement.videoWidth;
-  canvasElement.height = videoElement.videoHeight;
-
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-
-  if (results.multiHandLandmarks) {
-    for (const landmarks of results.multiHandLandmarks) {
-      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
-        {color: '#00FF00', lineWidth: 2});
-      drawLandmarks(canvasCtx, landmarks,
-        {color: '#FF0000', lineWidth: 1});
-    }
+  if (results.multiHandLandmarks.length > 0) {
+    let x = results.multiHandLandmarks[0][8].x;
+    player.x = x * canvas.width;
   }
-
-  canvasCtx.restore();
 });
 
-const camera = new Camera(videoElement, {
+const camera = new Camera(video, {
   onFrame: async () => {
-    await hands.send({image: videoElement});
+    await hands.send({image: video});
   },
   width: 640,
   height: 480
 });
 camera.start();
+
+gameLoop();
 </script>
 
 </body>
